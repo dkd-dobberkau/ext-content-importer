@@ -33,7 +33,6 @@ class PageImportServiceTest extends TestCase
 
         self::assertSame('Über uns', $result['title']);
         self::assertSame(1, $result['pid']);
-        self::assertSame('/ueber-uns', $result['slug']);
         self::assertSame(0, $result['hidden']);
         self::assertSame(1, $result['doktype']);
         self::assertSame(200, $result['sorting']);
@@ -115,7 +114,7 @@ class PageImportServiceTest extends TestCase
         self::assertStringContainsString('Basic', $result['bodytext']);
     }
 
-    public function testFilterTopLevelPages(): void
+    public function testFilterRootPages(): void
     {
         $pages = [
             ['page' => ['slug' => '/', 'parent' => '', 'nav_position' => 1, 'title' => 'Home'], 'contentElements' => []],
@@ -123,11 +122,12 @@ class PageImportServiceTest extends TestCase
             ['page' => ['slug' => 'ueber-uns/team', 'parent' => '/ueber-uns', 'nav_position' => 3, 'title' => 'Team'], 'contentElements' => []],
         ];
 
-        $topLevel = $this->service->filterTopLevelPages($pages);
-        self::assertCount(2, $topLevel);
+        $root = $this->service->filterRootPages($pages);
+        self::assertCount(1, $root);
+        self::assertSame('Home', $root[0]['page']['title']);
     }
 
-    public function testFilterChildPages(): void
+    public function testFilterSectionPages(): void
     {
         $pages = [
             ['page' => ['slug' => '/', 'parent' => '', 'nav_position' => 1, 'title' => 'Home'], 'contentElements' => []],
@@ -135,9 +135,22 @@ class PageImportServiceTest extends TestCase
             ['page' => ['slug' => 'ueber-uns/team', 'parent' => '/ueber-uns', 'nav_position' => 3, 'title' => 'Team'], 'contentElements' => []],
         ];
 
-        $children = $this->service->filterChildPages($pages);
-        self::assertCount(1, $children);
-        self::assertSame('Team', $children[0]['page']['title']);
+        $sections = $this->service->filterSectionPages($pages);
+        self::assertCount(1, $sections);
+        self::assertSame('Über uns', $sections[0]['page']['title']);
+    }
+
+    public function testFilterSubPages(): void
+    {
+        $pages = [
+            ['page' => ['slug' => '/', 'parent' => '', 'nav_position' => 1, 'title' => 'Home'], 'contentElements' => []],
+            ['page' => ['slug' => 'ueber-uns', 'parent' => '/', 'nav_position' => 2, 'title' => 'Über uns'], 'contentElements' => []],
+            ['page' => ['slug' => 'ueber-uns/team', 'parent' => '/ueber-uns', 'nav_position' => 3, 'title' => 'Team'], 'contentElements' => []],
+        ];
+
+        $sub = $this->service->filterSubPages($pages);
+        self::assertCount(1, $sub);
+        self::assertSame('Team', $sub[0]['page']['title']);
     }
 
     public function testBuildContentElementTextmedia(): void

@@ -33,22 +33,37 @@ class PageImportService
         Bootstrap::initializeBackendAuthentication();
         $imported = [];
 
-        $topLevel = $this->filterTopLevelPages($parsedPages);
-        $lastTopLevelUid = 0;
-        foreach ($topLevel as $parsedPage) {
-            $targetPid = $lastTopLevelUid > 0 ? -$lastTopLevelUid : $rootPid;
-            $pageUid = $this->createPage($parsedPage, $targetPid);
+        // Pass 1: Create root page (parent="" or slug="/") at rootPid
+        $rootPages = $this->filterRootPages($parsedPages);
+        $siteRootUid = 0;
+        foreach ($rootPages as $parsedPage) {
+            $pageUid = $this->createPage($parsedPage, $rootPid);
             $slug = $parsedPage['page']['slug'];
             $this->slugToUid[$slug] = $pageUid;
-            $lastTopLevelUid = $pageUid;
+            if ($siteRootUid === 0) {
+                $siteRootUid = $pageUid;
+            }
             $this->createContentElements($parsedPage['contentElements'], $pageUid);
             $imported[] = $parsedPage['page']['title'];
         }
 
-        // Group children by parent so we can track last sibling per parent
+        // Pass 2: Create section pages (parent="/") as children of root page
+        $sectionPages = $this->filterSectionPages($parsedPages);
+        $lastSectionUid = 0;
+        foreach ($sectionPages as $parsedPage) {
+            $targetPid = $lastSectionUid > 0 ? -$lastSectionUid : $siteRootUid;
+            $pageUid = $this->createPage($parsedPage, $targetPid);
+            $slug = $parsedPage['page']['slug'];
+            $this->slugToUid[$slug] = $pageUid;
+            $lastSectionUid = $pageUid;
+            $this->createContentElements($parsedPage['contentElements'], $pageUid);
+            $imported[] = $parsedPage['page']['title'];
+        }
+
+        // Pass 3: Create sub-pages under their respective parents
         $childrenByParent = [];
-        $children = $this->filterChildPages($parsedPages);
-        foreach ($children as $parsedPage) {
+        $subPages = $this->filterSubPages($parsedPages);
+        foreach ($subPages as $parsedPage) {
             $parentSlug = ltrim($parsedPage['page']['parent'], '/');
             $childrenByParent[$parentSlug][] = $parsedPage;
         }
@@ -56,7 +71,7 @@ class PageImportService
         foreach ($childrenByParent as $parentSlug => $siblings) {
             $lastSiblingUid = 0;
             foreach ($siblings as $parsedPage) {
-                $parentUid = $this->slugToUid[$parentSlug] ?? $rootPid;
+                $parentUid = $this->slugToUid[$parentSlug] ?? $siteRootUid;
                 $targetPid = $lastSiblingUid > 0 ? -$lastSiblingUid : $parentUid;
                 $pageUid = $this->createPage($parsedPage, $targetPid);
                 $slug = $parsedPage['page']['slug'];
@@ -71,30 +86,35 @@ class PageImportService
     }
 
     /**
-     * Filter pages that are at the top level (parent is '/' or empty).
-     *
-     * @param array $pages
-     * @return array
+     * Filter root pages (parent is empty) - typically just the homepage.
      */
-    public function filterTopLevelPages(array $pages): array
+    public function filterRootPages(array $pages): array
     {
         return array_values(array_filter($pages, function (array $p) {
             $parent = $p['page']['parent'] ?? '';
-            return $parent === '/' || $parent === '';
+            return $parent === '' || $parent === null;
         }));
     }
 
     /**
-     * Filter pages that are children (parent is neither '/' nor empty).
-     *
-     * @param array $pages
-     * @return array
+     * Filter section pages (parent is '/') - main navigation items.
      */
-    public function filterChildPages(array $pages): array
+    public function filterSectionPages(array $pages): array
     {
         return array_values(array_filter($pages, function (array $p) {
             $parent = $p['page']['parent'] ?? '';
-            return $parent !== '/' && $parent !== '';
+            return $parent === '/';
+        }));
+    }
+
+    /**
+     * Filter sub-pages (parent is a specific page like '/ueber-uns').
+     */
+    public function filterSubPages(array $pages): array
+    {
+        return array_values(array_filter($pages, function (array $p) {
+            $parent = $p['page']['parent'] ?? '';
+            return $parent !== '' && $parent !== '/' && $parent !== null;
         }));
     }
 
@@ -112,7 +132,6 @@ class PageImportService
         $data = [
             'pid' => $pid,
             'title' => $page['title'],
-            'slug' => '/' . ltrim($page['slug'] ?? '', '/'),
             'hidden' => 0,
             'doktype' => 1,
             'sorting' => ($page['nav_position'] ?? 1) * 100,
@@ -193,6 +212,7 @@ class PageImportService
         $newId = 'NEW_page_' . md5($parsedPage['page']['slug']);
 
         $dataHandler = GeneralUtility::makeInstance(DataHandler::class);
+        $dataHandler->isImporting = true;
         $data = [
             'pages' => [
                 $newId => $this->buildPageDataMap($parsedPage, $pid),
