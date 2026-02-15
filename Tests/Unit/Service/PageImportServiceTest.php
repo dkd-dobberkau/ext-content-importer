@@ -94,7 +94,8 @@ class PageImportServiceTest extends TestCase
 
         $result = $this->service->buildContentElementDataMap($ce, 1, 100);
 
-        self::assertSame('quote', $result['CType']);
+        self::assertSame('text', $result['CType']);
+        self::assertStringContainsString('<blockquote>', $result['bodytext']);
         self::assertStringContainsString('Tolles Restaurant', $result['bodytext']);
         self::assertStringContainsString('Maria S.', $result['header']);
     }

@@ -186,9 +186,11 @@ class PageImportService
                 break;
 
             case $type === 'quote':
-                $data['CType'] = 'quote';
-                $data['bodytext'] = $this->extractQuoteText($content);
-                $data['header'] = $this->extractQuoteAuthor($content);
+                $data['CType'] = 'text';
+                $quoteText = $this->extractQuoteText($content);
+                $quoteAuthor = $this->extractQuoteAuthor($content);
+                $data['bodytext'] = '<blockquote>' . htmlspecialchars($quoteText) . '</blockquote>';
+                $data['header'] = $quoteAuthor;
                 break;
 
             case $type === 'textmedia':
