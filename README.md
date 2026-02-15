@@ -98,4 +98,4 @@ vendor/bin/phpunit
 
 ## License
 
-[MIT](LICENSE)
+[GPL-2.0-or-later](LICENSE)
