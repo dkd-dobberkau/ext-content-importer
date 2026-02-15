@@ -1,0 +1,36 @@
+{
+    "name": "dkd/content-importer",
+    "type": "typo3-cms-extension",
+    "description": "Import Markdown content files as TYPO3 pages and content elements",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": "^8.2",
+        "typo3/cms-core": "^13.4",
+        "league/commonmark": "^2.6"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dkd\\ContentImporter\\": "Classes/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Dkd\\ContentImporter\\Tests\\": "Tests/"
+        }
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "content_importer"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "typo3/cms-composer-installers": true,
+            "typo3/class-alias-loader": true,
+            "typo3/cms-cli": true
+        }
+    }
+}
