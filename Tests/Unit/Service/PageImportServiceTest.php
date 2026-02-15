@@ -85,6 +85,22 @@ class PageImportServiceTest extends TestCase
         self::assertStringContainsString('Qualität', $result['bodytext']);
     }
 
+    public function testBuildContentElementBulletsFallbackToText(): void
+    {
+        $ce = [
+            'type' => 'text',
+            'subtype' => 'bullets',
+            'content' => "### Unsere Kernwerte\n\n**Authentizität**\nEchte italienische Küche.\n\n**Qualität**\nFrische Zutaten.",
+        ];
+
+        $result = $this->service->buildContentElementDataMap($ce, 1, 100);
+
+        self::assertSame('text', $result['CType']);
+        self::assertSame('Unsere Kernwerte', $result['header']);
+        self::assertStringContainsString('Authentizität', $result['bodytext']);
+        self::assertStringContainsString('Qualität', $result['bodytext']);
+    }
+
     public function testBuildContentElementQuote(): void
     {
         $ce = [

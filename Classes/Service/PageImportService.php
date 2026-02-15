@@ -174,9 +174,17 @@ class PageImportService
                 break;
 
             case $type === 'text' && $subtype === 'bullets':
-                $data['CType'] = 'bullets';
-                $data['header'] = $this->extractHeaderText($content);
-                $data['bodytext'] = $this->extractBulletItems($content);
+                $bulletItems = $this->extractBulletItems($content);
+                if ($bulletItems !== '') {
+                    $data['CType'] = 'bullets';
+                    $data['header'] = $this->extractHeaderText($content);
+                    $data['bodytext'] = $bulletItems;
+                } else {
+                    // Fallback: content has no real list items, render as text with HTML
+                    $data['CType'] = 'text';
+                    $data['header'] = $this->extractHeaderText($content);
+                    $data['bodytext'] = $this->convertToHtml($this->stripFirstHeader($content));
+                }
                 break;
 
             case $type === 'text' && $subtype === 'table':
