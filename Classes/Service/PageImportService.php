@@ -98,6 +98,8 @@ class PageImportService
         $data = [
             'pid' => $pid,
             'title' => $page['title'],
+            'slug' => '/' . ltrim($page['slug'] ?? '', '/'),
+            'hidden' => 0,
             'doktype' => 1,
             'sorting' => ($page['nav_position'] ?? 1) * 100,
         ];

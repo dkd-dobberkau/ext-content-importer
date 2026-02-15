@@ -33,6 +33,8 @@ class PageImportServiceTest extends TestCase
 
         self::assertSame('Über uns', $result['title']);
         self::assertSame(1, $result['pid']);
+        self::assertSame('/ueber-uns', $result['slug']);
+        self::assertSame(0, $result['hidden']);
         self::assertSame(1, $result['doktype']);
         self::assertSame(200, $result['sorting']);
         self::assertSame('Über uns - Test', $result['seo_title']);
