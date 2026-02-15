@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dkd\ContentImporter\Service;
 
 use League\CommonMark\CommonMarkConverter;
+use TYPO3\CMS\Core\Core\Bootstrap;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
@@ -29,6 +30,7 @@ class PageImportService
      */
     public function importAll(array $parsedPages, int $rootPid): array
     {
+        Bootstrap::initializeBackendAuthentication();
         $imported = [];
 
         $topLevel = $this->filterTopLevelPages($parsedPages);
@@ -182,6 +184,13 @@ class PageImportService
         ];
         $dataHandler->start($data, []);
         $dataHandler->process_datamap();
+
+        if ($dataHandler->errorLog !== []) {
+            throw new \RuntimeException(
+                'DataHandler errors for page "' . $parsedPage['page']['title'] . '": '
+                . implode(', ', $dataHandler->errorLog)
+            );
+        }
 
         return (int)($dataHandler->substNEWwithIDs[$newId] ?? 0);
     }

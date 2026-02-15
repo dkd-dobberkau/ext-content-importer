@@ -39,8 +39,8 @@ class ImportCommand extends Command
                 'pid',
                 'p',
                 InputOption::VALUE_REQUIRED,
-                'Root page UID under which pages are created',
-                '1'
+                'Parent page UID under which pages are created (0 = root level)',
+                '0'
             );
     }
 
