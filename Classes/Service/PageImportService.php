@@ -34,23 +34,37 @@ class PageImportService
         $imported = [];
 
         $topLevel = $this->filterTopLevelPages($parsedPages);
-        foreach ($topLevel as $i => $parsedPage) {
-            $pageUid = $this->createPage($parsedPage, $rootPid);
+        $lastTopLevelUid = 0;
+        foreach ($topLevel as $parsedPage) {
+            $targetPid = $lastTopLevelUid > 0 ? -$lastTopLevelUid : $rootPid;
+            $pageUid = $this->createPage($parsedPage, $targetPid);
             $slug = $parsedPage['page']['slug'];
             $this->slugToUid[$slug] = $pageUid;
+            $lastTopLevelUid = $pageUid;
             $this->createContentElements($parsedPage['contentElements'], $pageUid);
             $imported[] = $parsedPage['page']['title'];
         }
 
+        // Group children by parent so we can track last sibling per parent
+        $childrenByParent = [];
         $children = $this->filterChildPages($parsedPages);
-        foreach ($children as $i => $parsedPage) {
+        foreach ($children as $parsedPage) {
             $parentSlug = ltrim($parsedPage['page']['parent'], '/');
-            $parentUid = $this->slugToUid[$parentSlug] ?? $rootPid;
-            $pageUid = $this->createPage($parsedPage, $parentUid);
-            $slug = $parsedPage['page']['slug'];
-            $this->slugToUid[$slug] = $pageUid;
-            $this->createContentElements($parsedPage['contentElements'], $pageUid);
-            $imported[] = $parsedPage['page']['title'];
+            $childrenByParent[$parentSlug][] = $parsedPage;
+        }
+
+        foreach ($childrenByParent as $parentSlug => $siblings) {
+            $lastSiblingUid = 0;
+            foreach ($siblings as $parsedPage) {
+                $parentUid = $this->slugToUid[$parentSlug] ?? $rootPid;
+                $targetPid = $lastSiblingUid > 0 ? -$lastSiblingUid : $parentUid;
+                $pageUid = $this->createPage($parsedPage, $targetPid);
+                $slug = $parsedPage['page']['slug'];
+                $this->slugToUid[$slug] = $pageUid;
+                $lastSiblingUid = $pageUid;
+                $this->createContentElements($parsedPage['contentElements'], $pageUid);
+                $imported[] = $parsedPage['page']['title'];
+            }
         }
 
         return $imported;
@@ -203,19 +217,22 @@ class PageImportService
             return;
         }
 
-        $data = ['tt_content' => []];
+        $lastCeUid = 0;
         foreach ($contentElements as $i => $ce) {
             $newId = 'NEW_ce_' . $pageUid . '_' . $i;
-            $data['tt_content'][$newId] = $this->buildContentElementDataMap(
-                $ce,
-                $pageUid,
-                ($i + 1) * 100
-            );
-        }
+            $targetPid = $lastCeUid > 0 ? -$lastCeUid : $pageUid;
+            $data = [
+                'tt_content' => [
+                    $newId => $this->buildContentElementDataMap($ce, $targetPid, ($i + 1) * 100),
+                ],
+            ];
 
-        $dataHandler = GeneralUtility::makeInstance(DataHandler::class);
-        $dataHandler->start($data, []);
-        $dataHandler->process_datamap();
+            $dataHandler = GeneralUtility::makeInstance(DataHandler::class);
+            $dataHandler->start($data, []);
+            $dataHandler->process_datamap();
+
+            $lastCeUid = (int)($dataHandler->substNEWwithIDs[$newId] ?? 0);
+        }
     }
 
     /**
